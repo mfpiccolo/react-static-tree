@@ -45,7 +45,6 @@ function examplePlugin(babel) {
       },
       ImportDeclaration(path) {
         if (!this.isReact) return;
-        // console.log(path);
       },
       ExportDefaultDeclaration(path) {
         if (!this.isReact) return;
@@ -77,7 +76,8 @@ function examplePlugin(babel) {
           }
         })
       );
-      console.log({
+      console.log(2);
+      components.push({
         file: state.opts.filename,
         componentName: this.exportedComponent,
         renderedTagComponents: this.renderedTagComponents,
@@ -118,19 +118,19 @@ const walkSync = function(dir, filelist) {
       analyzeFile(dir, file);
     }
   });
+  console.log(1);
 };
 
 function analyzeFile(dir, file) {
   if (file.match(/\.js$/)) {
-    const out = babel.transformFile(
+    babel.transformFile(
       dir + file,
       {
         plugins: [examplePlugin, 'syntax-flow', 'transform-decorators-legacy'],
         presets: ['stage-0'],
       },
       function(err, result) {
-        // console.log(result);
-        result; // => { code, map, ast }
+        console.log(JSON.stringify(components, null, 2));
       }
     );
   }
