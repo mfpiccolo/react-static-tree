@@ -1,24 +1,26 @@
-var _ = require('lodash');
+const _ = require('lodash');
+
+const components = [];
 
 module.exports = function(babel) {
-  var t = babel.types;
+  const t = babel.types;
   return {
     inherits: require('babel-plugin-syntax-jsx'),
     pre(state) {
       this.isReact = null;
       this.exportedComponent = null;
       this.renderedTagComponents = [];
-      this.possibleComponents = [];
-      this.possibleComponentsWithPath = [];
+      this.possibleImportedComponents = [];
+      this.possibleImportedComponentsWithPath = [];
     },
     visitor: {
       Identifier(path) {
-        var name = path.node.name;
+        const name = path.node.name;
         if (isPossibleImportedComponent(path)) {
-          this.possibleComponents.push(name);
+          this.possibleImportedComponents.push(name);
         }
 
-        var parentType = _.get(path, 'parent.type');
+        const parentType = _.get(path, 'parent.type');
 
         // checks if the source is importing react
         if (parentType == 'ExportDefaultDeclaration') {
@@ -43,7 +45,7 @@ module.exports = function(babel) {
       },
       ExportDefaultDeclaration(path) {
         if (!this.isReact) return;
-        var className = _.get(path, 'node.declaration.id.name');
+        const className = _.get(path, 'node.declaration.id.name');
         if (!this.exportedComponent && className) {
           this.exportedComponent = className;
         }
@@ -52,8 +54,8 @@ module.exports = function(babel) {
         if (!this.isReact) return;
         const importLiteral = path.node.value;
         const importName = _.get(path, 'parent.specifiers[0].local.name');
-        if (this.possibleComponents.includes(importName)) {
-          this.possibleComponentsWithPath.push({
+        if (this.possibleImportedComponents.includes(importName)) {
+          this.possibleImportedComponentsWithPath.push({
             name: importName,
             path: importLiteral,
           });
@@ -61,15 +63,23 @@ module.exports = function(babel) {
       },
     },
     post(state) {
-      confirmedComponents = this.possibleComponents.filter(component => {
-        return this.renderedTagComponents.includes(component);
-      });
+      confirmedComponents = _.compact(
+        this.possibleImportedComponents.map(component => {
+          const isConfirmed = this.renderedTagComponents.includes(component);
+          if (isConfirmed) {
+            return this.possibleImportedComponentsWithPath.find(
+              cWithPath => cWithPath.name === component
+            );
+          }
+        })
+      );
       console.log({
         file: state.opts.filename,
         componentName: this.exportedComponent,
         renderedTagComponents: this.renderedTagComponents,
-        possibleComponents: this.possibleComponents,
-        possibleComponentsWithPath: this.possibleComponentsWithPath,
+        possibleImportedComponents: this.possibleImportedComponents,
+        possibleImportedComponentsWithPath: this
+          .possibleImportedComponentsWithPath,
         confirmedComponents,
       });
     },
@@ -77,18 +87,19 @@ module.exports = function(babel) {
 };
 
 function isRenderedTabComponent(path) {
-  var name = path.node.name;
-  var isTag = _.get(path, 'parent.type') === 'JSXOpeningElement';
+  const name = path.node.name;
+  const isTag = _.get(path, 'parent.type') === 'JSXOpeningElement';
   return isTag && isCapitalized(name[0]);
 }
 
 function isPossibleImportedComponent(path) {
-  var name = path.node.name;
+  const name = path.node.name;
   if (['React', 'PropTypes'].includes(name)) return;
-  var isTag = _.get(path, 'parent.type') === 'ImportDefaultSpecifier';
+  const isTag = _.get(path, 'parent.type') === 'ImportDefaultSpecifier';
   return isTag && isCapitalized(name[0]);
 }
 
 function isCapitalized(string) {
-  return string === string.toUpperCase();
+  firstChar = string[0];
+  return firstChar.charCodeAt() <= 90 && firstChar.charCodeAt() >= 65;
 }
