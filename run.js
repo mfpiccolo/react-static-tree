@@ -76,7 +76,15 @@ function examplePlugin(babel) {
           }
         })
       );
-      console.log(2);
+      console.log({
+        file: state.opts.filename,
+        componentName: this.exportedComponent,
+        renderedTagComponents: this.renderedTagComponents,
+        possibleImportedComponents: this.possibleImportedComponents,
+        possibleImportedComponentsWithPath: this
+          .possibleImportedComponentsWithPath,
+        confirmedComponents,
+      });
       components.push({
         file: state.opts.filename,
         componentName: this.exportedComponent,
@@ -118,7 +126,6 @@ const walkSync = function(dir, filelist) {
       analyzeFile(dir, file);
     }
   });
-  console.log(1);
 };
 
 function analyzeFile(dir, file) {
@@ -130,7 +137,7 @@ function analyzeFile(dir, file) {
         presets: ['stage-0'],
       },
       function(err, result) {
-        console.log(JSON.stringify(components, null, 2));
+        // console.log(JSON.stringify(components, null, 2));
       }
     );
   }
