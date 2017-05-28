@@ -1,5 +1,7 @@
 const fs = require('fs');
 const babel = require('babel-core');
+const docGen = require('react-docgen');
+const path = require('path');
 const _ = require('lodash');
 
 const dir = process.argv[2];
@@ -76,24 +78,22 @@ function examplePlugin(babel) {
           }
         })
       );
-      console.log({
-        file: state.opts.filename,
-        componentName: this.exportedComponent,
-        renderedTagComponents: this.renderedTagComponents,
-        possibleImportedComponents: this.possibleImportedComponents,
-        possibleImportedComponentsWithPath: this
-          .possibleImportedComponentsWithPath,
-        confirmedComponents,
-      });
-      components.push({
-        file: state.opts.filename,
-        componentName: this.exportedComponent,
-        renderedTagComponents: this.renderedTagComponents,
-        possibleImportedComponents: this.possibleImportedComponents,
-        possibleImportedComponentsWithPath: this
-          .possibleImportedComponentsWithPath,
-        confirmedComponents,
-      });
+
+      const parsed = docGen.parse(state.code);
+      components.push(
+        _.merge(
+          {
+            file: state.opts.filename,
+            componentName: this.exportedComponent,
+            renderedTagComponents: this.renderedTagComponents,
+            possibleImportedComponents: this.possibleImportedComponents,
+            possibleImportedComponentsWithPath: this
+              .possibleImportedComponentsWithPath,
+            confirmedComponents,
+          },
+          parsed
+        )
+      );
     },
   };
 }
@@ -119,27 +119,38 @@ function isCapitalized(string) {
 const walkSync = function(dir, filelist) {
   const files = fs.readdirSync(dir);
   filelist = filelist || [];
-  files.forEach(function(file) {
+  const analyzed = files.map(function(file) {
     if (fs.statSync(dir + file).isDirectory()) {
       filelist = walkSync(dir + file + '/', filelist);
     } else {
-      analyzeFile(dir, file);
+      return analyzeFile(dir, file);
     }
+  });
+
+  //
+  Promise.all(analyzed).then(values => {
+    console.log(JSON.stringify(components, null, 2));
   });
 };
 
 function analyzeFile(dir, file) {
   if (file.match(/\.js$/)) {
-    babel.transformFile(
-      dir + file,
-      {
-        plugins: [examplePlugin, 'syntax-flow', 'transform-decorators-legacy'],
-        presets: ['stage-0'],
-      },
-      function(err, result) {
-        // console.log(JSON.stringify(components, null, 2));
-      }
-    );
+    return new Promise((resolve, reject) => {
+      babel.transformFile(
+        dir + file,
+        {
+          plugins: [
+            examplePlugin,
+            'syntax-flow',
+            'transform-decorators-legacy',
+          ],
+          presets: ['stage-0'],
+        },
+        function(err, result) {
+          resolve(true);
+        }
+      );
+    });
   }
 }
 

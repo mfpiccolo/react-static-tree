@@ -1,4 +1,6 @@
 const _ = require('lodash');
+const fs = require('fs');
+const docGen = require('react-docgen');
 
 const components = [];
 
@@ -73,6 +75,7 @@ module.exports = function(babel) {
           }
         })
       );
+
       console.log({
         file: state.opts.filename,
         componentName: this.exportedComponent,
